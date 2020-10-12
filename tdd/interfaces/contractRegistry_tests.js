@@ -51,4 +51,51 @@ describe('contractRegistry', () => {
             expect(registry.fulfills(isArray, 'not an array')).toBe(false);
         });
     });
+
+    describe('assert(contractName, obj)', () => {
+        it('fulfills(contractName, obj)에 기반을 둔다', () => {
+            spyOn(registry, 'fulfills').and.callThrough();
+            registry.assert(isArray, ary);
+            expect(registry.fulfills).toHaveBeenCalledWith(isArray, ary);
+        });
+
+        it('객체가 규약을 지키면 예외를 던지지 않는다', () => {
+            registry.assert(isArray, ary);
+        });
+
+        it('객체가 규약을 위반하면 예외를 던진다', () => {
+            const notAnArray = 'abc';
+            expect(() => registry.assert(isArray,notAnArray))
+                .toThrow(new Error(
+                    registry.getMessageForFailedContract(isArray, notAnArray)));
+        });
+    });
+
+    describe('attachReturnValidator(funcName, funcObj, contractName)', () => {
+        const funcName = 'func';
+        let funcObj;
+        const returnValue = [1, 2, 3];
+
+        beforeEach(() => {
+            funcObj = {};
+            funcObj[funcName] = () => returnValue;
+        });
+
+        describe('애스팩트 기능', () => {
+            it('반환값이 규약을 지키면 이를 반환한다.', () => {
+                registry.attachReturnValidator(funcName, funcObj, isArray);
+                expect(funcObj[funcName]()).toEqual(returnValue);
+            });
+
+            it('반환값이 규약을 위반하면 예외를 던진다.', () => {
+                const isNumber = 'isNumber';
+                registry.define(isNumber, ret => typeof ret === 'number');
+                registry.attachReturnValidator(funcName, funcObj, isNumber);
+
+                expect(() => funcObj[funcName]())
+                    .toThrow(new Error(
+                        registry.getMessageForFailedContract(isNumber, returnValue)));
+            });
+        });
+    });
 });
